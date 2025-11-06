@@ -1,6 +1,7 @@
 ﻿using Enter_Extractor_Api.Models;
 using Enter_Extractor_Api.Models.SmartExtraction;
 using Enter_Extractor_Api.Services.SmartExtraction;
+using Enter_Extractor_Api.Services.Proximity;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -17,16 +18,19 @@ namespace Enter_Extractor_Api.Services
         private readonly IFieldTypeClassifier _fieldTypeClassifier;
         private readonly ITokenExtractor _tokenExtractor;
         private readonly IPythonExtractorClient _pythonClient;
+        private readonly Proximity.ILabelDetectorProximity _labelDetector;
 
         public ExtractorService(ILogger<ExtractorService> logger, IPdfTextExtractor pdfExtractor,
             IFieldTypeClassifier fieldTypeClassifier, ITokenExtractor tokenExtractor,
-            IEnumParser enumParser, IPythonExtractorClient pythonClient)
+            IEnumParser enumParser, IPythonExtractorClient pythonClient,
+            Proximity.ILabelDetectorProximity labelDetector)
         {
             _logger = logger;
             _pdfExtractor = pdfExtractor;
             _fieldTypeClassifier = fieldTypeClassifier;
             _tokenExtractor = tokenExtractor;
             _pythonClient = pythonClient;
+            _labelDetector = labelDetector;
         }
 
         public async Task<ExtractorResponse> ExtractAsync(string label, Dictionary<string, string> schema, string pdf)
@@ -177,30 +181,39 @@ namespace Enter_Extractor_Api.Services
                     RemoveKeywordsFromAllLines(availableLines, keywordsToRemove);
                 }
 
-                // 🏷️ Criar pendingSchema para extração semântica
-                var pendingSchema = new Dictionary<string, string>(simpleMultiLineFields.Count);
-                foreach (var field in simpleMultiLineFields)
+                // 🏷️ NOVA ETAPA: Detectar labels antes da extração semântica
+                _logger.LogInformation("🔍 Detectando labels para {Count} campos pendentes", simpleMultiLineFields.Count);
+
+                // Construir schema para detecção (Dictionary<fieldName, description>)
+                var schemaForDetection = simpleMultiLineFields.ToDictionary(
+                    f => f.fieldName,
+                    f => f.description
+                );
+
+                // Converter availableLines para array de strings
+                var linesArray = availableLines.Select(l => l.line).ToArray();
+
+                // Detectar todas as labels de uma vez
+                var detectedLabels = await _labelDetector.DetectLabelsAsync(
+                    schema: schemaForDetection,
+                    lines: linesArray
+                );
+
+                _logger.LogInformation("✅ Detectadas {Count} labels no texto", detectedLabels.Count);
+
+                // 🎯 TODO Sprint 2: Extrair valores por proximidade
+                foreach (var item in detectedLabels)
                 {
-                    pendingSchema[field.fieldName] = field.description;
+                    _logger.LogInformation("📍 Label '{Text}' detectada para '{Field}' na linha {Line} (estratégia: {Strategy}, score: {Score:P0})",
+                        item.DetectedText, item.FieldName, item.LineIndex, item.Strategy, item.SimilarityScore);
+
+                    // Próximo sprint: implementar extração por proximidade
+                    // - Buscar valor após a label na mesma linha
+                    // - Se não encontrar, buscar na linha seguinte
+                    // - Remover de availableLines após extrair
                 }
 
-                //await RemoveLabelsClientAsync(availableLines, pendingFieldNames);
-
-                /////////////////////////////////////
-
-                // Processar linhas em paralelo e acumular resultados
-                //var allSemanticResults = new ConcurrentBag<SemanticExtractResponse>();
-
-                // Otimização: remover variável não utilizada
-                // var allSemanticResults = new List<SemanticLabelDetectResponse>();
-
-                // Otimização: remover variável não utilizada
-                // var parallelOptions = new ParallelOptions
-                // {
-                //     MaxDegreeOfParallelism = Environment.ProcessorCount
-                // };
-
-                // Otimização: construir string usando StringBuilder para melhor performance
+                // Construir texto limpo para fallback semântico GPT
                 var sb = new StringBuilder(availableLines.Sum(l => l.line.Length + 1));
                 for (int i = 0; i < availableLines.Count; i++)
                 {
@@ -238,6 +251,13 @@ namespace Enter_Extractor_Api.Services
 
                 // Juntar todo o texto para processamento final
                 //var cleanedText = string.Join("\n", availableLines.Select(l => l.line));
+
+                // 🏷️ Criar pendingSchema para extração semântica
+                var pendingSchema = new Dictionary<string, string>(simpleMultiLineFields.Count);
+                foreach (var field in simpleMultiLineFields)
+                {
+                    pendingSchema[field.fieldName] = field.description;
+                }
 
                 var smartResult = await _pythonClient.EmbeddingsPythonAsync(
                     label: null,

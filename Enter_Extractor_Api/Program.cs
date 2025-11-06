@@ -3,8 +3,10 @@ using Enter_Extractor_Api.Middleware;
 using Enter_Extractor_Api.Services;
 using Enter_Extractor_Api.Services.V2.PythonClients;
 using Enter_Extractor_Api.Services.V2;
+using Enter_Extractor_Api.Services.Proximity;
 using Scalar.AspNetCore;
 using Enter_Extractor_Api.Models.V2;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Enter_Extractor_Api
 {
@@ -76,6 +78,7 @@ namespace Enter_Extractor_Api
             // Smart Extraction services (Fase 1 - sem ML)
             builder.Services.AddScoped<Services.SmartExtraction.IEnumParser, Services.SmartExtraction.EnumParser>();
             builder.Services.AddScoped<Services.SmartExtraction.IFieldTypeClassifier, Services.SmartExtraction.FieldTypeClassifier>();
+            builder.Services.AddScoped<Services.Proximity.ILabelDetectorProximity, Services.Proximity.LabelDetectorProximity>();
             builder.Services.AddScoped<ILabelDetector, LabelDetector>();
             builder.Services.AddScoped<ITextTokenizer, TextTokenizer>();
             //builder.Services.AddScoped<Services.SmartExtraction.ISimpleTokenExtractor, Services.SmartExtraction.SimpleTokenExtractor>();

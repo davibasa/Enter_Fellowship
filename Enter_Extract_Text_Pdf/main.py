@@ -208,8 +208,12 @@ class SemanticLabelDetectRequest(BaseModel):
 class CandidateLabelMatch(BaseModel):
     candidate_text: str = Field(..., description="Texto candidato do documento")
     matched_label: str = Field(..., description="Label do schema detectada")
+    field_name: str = Field(..., description="Nome do campo no schema")
     score: float = Field(..., description="Score de similaridade (0-1)")
     rank: int = Field(..., description="Ranking do match")
+    line_index: int = Field(0, description="Índice da linha onde foi encontrado")
+    char_start_index: int = Field(0, description="Índice do caractere inicial na linha")
+    char_end_index: int = Field(0, description="Índice do caractere final na linha")
 
 class SemanticLabelDetectResponse(BaseModel):
     detected_labels: List[CandidateLabelMatch] = Field(..., description="Labels detectadas no texto")
@@ -844,24 +848,45 @@ async def semantic_label_detect(request: SemanticLabelDetectRequest):
         
         # 1️⃣ Preparar candidatos (possíveis labels no documento)
         logger.info("📝 Preparando candidatos (possíveis labels no documento)...")
-        candidates = set()
+        candidates = []
+        candidate_positions = []  # [(line_index, char_start, char_end)]
         
-        # Adicionar linhas não vazias
-        lines = [line.strip() for line in request.text.split('\n') if line.strip()]
-        candidates.update(lines)
-        logger.info(f"   • {len(lines)} linhas adicionadas")
+        # Adicionar linhas não vazias com suas posições
+        lines = request.text.split('\n')
+        for line_idx, line in enumerate(lines):
+            line_stripped = line.strip()
+            if line_stripped:
+                # Encontrar posição do texto na linha original
+                char_start = line.index(line_stripped)
+                char_end = char_start + len(line_stripped)
+                candidates.append(line_stripped)
+                candidate_positions.append((line_idx, char_start, char_end))
+        
+        logger.info(f"   • {len(candidates)} linhas adicionadas")
         
         # Adicionar tokens grandes (palavras/frases que podem ser labels)
-        for line in lines:
-            tokens = line.split()
-            large_tokens = [
-                token.strip() 
-                for token in tokens 
-                if len(token.strip()) >= request.min_token_length
-            ]
-            candidates.update(large_tokens)
+        for line_idx, line in enumerate(lines):
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+                
+            tokens = line_stripped.split()
+            for token in tokens:
+                token_stripped = token.strip()
+                if len(token_stripped) >= request.min_token_length:
+                    # Encontrar posição do token na linha original
+                    try:
+                        char_start = line.index(token_stripped)
+                        char_end = char_start + len(token_stripped)
+                        candidates.append(token_stripped)
+                        candidate_positions.append((line_idx, char_start, char_end))
+                    except ValueError:
+                        # Token não encontrado (pode ter sido modificado pelo strip), usar posição aproximada
+                        char_start = 0
+                        char_end = len(token_stripped)
+                        candidates.append(token_stripped)
+                        candidate_positions.append((line_idx, char_start, char_end))
         
-        candidates = list(candidates)
         logger.info(f"   ✓ Total de candidatos: {len(candidates)}")
         
         if not candidates:
@@ -917,7 +942,10 @@ async def semantic_label_detect(request: SemanticLabelDetectRequest):
             if best_score >= request.similarity_threshold:
                 best_label = label_names[best_idx]
                 
-                logger.info(f"\n✅ Candidato: '{candidate_text}'")
+                # Obter posição do candidato
+                line_idx, char_start, char_end = candidate_positions[candidate_idx]
+                
+                logger.info(f"\n✅ Candidato: '{candidate_text}' (linha {line_idx}, pos {char_start}-{char_end})")
                 logger.info(f"   → Label: '{best_label}' (score: {best_score:.3f})")
                 
                 # DEBUG: Mostrar top 3
@@ -928,8 +956,12 @@ async def semantic_label_detect(request: SemanticLabelDetectRequest):
                 detected_labels.append(CandidateLabelMatch(
                     candidate_text=candidate_text,
                     matched_label=best_label,
+                    field_name=best_label,  # Usar o nome do label como field_name
                     score=round(best_score, 3),
-                    rank=1
+                    rank=1,
+                    line_index=line_idx,
+                    char_start_index=char_start,
+                    char_end_index=char_end
                 ))
                 
                 labels_summary[candidate_text] = best_label

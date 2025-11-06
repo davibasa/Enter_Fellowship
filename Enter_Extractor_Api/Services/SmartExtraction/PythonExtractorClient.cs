@@ -570,11 +570,23 @@ public class CandidateLabelMatch
     [JsonPropertyName("matched_label")]
     public string MatchedLabel { get; set; } = string.Empty;
 
+    [JsonPropertyName("field_name")]
+    public string FieldName { get; set; } = string.Empty;
+
     [JsonPropertyName("score")]
     public float Score { get; set; }
 
     [JsonPropertyName("rank")]
     public int Rank { get; set; }
+
+    [JsonPropertyName("line_index")]
+    public int LineIndex { get; set; }
+
+    [JsonPropertyName("char_start_index")]
+    public int CharStartIndex { get; set; }
+
+    [JsonPropertyName("char_end_index")]
+    public int CharEndIndex { get; set; }
 }
 
 /// <summary>
