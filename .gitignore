@@ -1,0 +1,337 @@
+# ============================================
+# .NET / C# / Visual Studio
+# ============================================
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+
+# User-specific files
+*.rsuser
+
+# Build results
+*.dll
+*.exe
+*.pdb
+*.cache
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# .NET Core
+project.assets.json
+project.fragment.lock.json
+artifacts/
+
+# Swagger/OpenAPI generated files
+Enter_Extractor_Api.json
+**/openapi.json
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# User secrets
+appsettings.Development.json
+appsettings.json
+*.Development.json
+secrets.json
+*.onnx
+# Static web assets
+wwwroot/
+
+# ============================================
+# Python
+# ============================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+./Enter_Extractor_Api/ZeroShotModel/*
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+pythonenv*/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# Docker
+# ============================================
+
+# Docker volumes
+docker-data/
+*.log
+
+# Docker secrets
+docker-compose.override.yml
+.dockerignore
+
+# ============================================
+# ML Models & Data
+# ============================================
+
+# Large model files (uncomment if models should not be tracked)
+# *.onnx
+# *.onnx.data
+# *.onnx.pb
+# *.pb
+# *.h5
+# *.pkl
+# *.joblib
+
+# Model checkpoints
+checkpoints/
+saved_models/
+*.ckpt
+*.pt
+*.pth
+
+# Training data (uncomment if data should not be tracked)
+# data/
+# datasets/
+# *.csv
+# *.json
+# *.xml
+# *.parquet
+
+# Temporary ML files
+ZeroShotModel/cache/*
+ZeroShotModel/
+ZeroShotModel/cache/
+
+# ============================================
+# IDE & Editor
+# ============================================
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.history/
+
+# ============================================
+# OS Files
+# ============================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# Project Specific
+# ============================================
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache
+.cache/
+cache/
+
+# Configuration files with secrets
+appsettings.Production.json
+.env
+.env.local
+.env.production
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+
+# API keys and secrets
+*secrets*
+*apikey*
+*.key
+*.pem
+*.crt
+*.md
+*.ps1
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Upload folders (if you have file uploads)
+uploads/
+files/
+docs/
+
+# PDF test files (uncomment if test PDFs should not be tracked)
+# *.pdf
+# test_pdfs/
+# sample_pdfs/
+
+# ============================================
+# ML Models & Data
+# ============================================
+
+# Large model files
+*.onnx
+*.onnx.data
+*.onnx.pb
+*.pb
+*.h5
+*.pkl
+*.joblib
+
+# Model checkpoints
+checkpoints/
+saved_models/
+*.ckpt
+*.pt
+*.pth
+
+# Training data (uncomment if data should not be tracked)
+# data/
+# datasets/
+# *.csv
+# *.json
+# *.xml
+# *.parquet
+
+# Temporary ML files - ZeroShotModel folder
+ZeroShotModel/
+**/ZeroShotModel/
+Enter_Extractor_Api/ZeroShotModel/

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: enter_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - enter_network
+
+  extractor-api:
+    build:
+      context: ./Enter_Extractor_Api
+      dockerfile: Dockerfile
+    container_name: enter_extractor_api
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Redis__ConnectionString=redis:6379
+      - PythonApi__BaseUrl=http://pdf-extractor:5000
+    depends_on:
+      redis:
+        condition: service_healthy
+      pdf-extractor:
+        condition: service_healthy
+    networks:
+      - enter_network
+    restart: unless-stopped
+
+  pdf-extractor:
+    build:
+      context: ./Enter_Extract_Text_Pdf
+      dockerfile: Dockerfile
+    container_name: enter_pdf_extractor
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - enter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  enter_network:
+    driver: bridge

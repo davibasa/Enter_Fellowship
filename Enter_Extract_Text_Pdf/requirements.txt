@@ -1,0 +1,28 @@
+# Framework assíncrono
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Validação de dados
+pydantic==2.5.0
+
+# Processamento de PDF
+PyPDF2==3.0.1
+
+# Machine Learning / NLP
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# NER e Embeddings
+spacy>=3.8.7
+sentence-transformers>=3.3.1
+
+# Redis
+redis>=5.2.0
+
+# OpenAI (fallback)
+openai>=2.6.1
+
+# Opcional: para produção
+# gunicorn==21.2.0

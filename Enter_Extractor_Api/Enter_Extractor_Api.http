@@ -1,0 +1,6 @@
+@Enter_Extractor_Api_HostAddress = http://localhost:5056
+
+GET {{Enter_Extractor_Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
