@@ -278,7 +278,6 @@ TestResults/
 *.key
 *.pem
 *.crt
-*.md
 *.ps1
 
 # Backup files
