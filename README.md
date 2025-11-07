@@ -22,7 +22,6 @@ Extrair campos estruturados (ex.: nome, CPF, data de validade, categoria, endere
 | Reduzir custo GPT                                  | LLM devolvendo dados já óbvios                             | Pipeline progressivo (Cache → Regex → Embeddings → GPT) | Resolvido                                         |
 | Escala em lote com feedback                        | Processar centenas de PDFs sem bloquear UI                 | SSE streaming + job state interno                       | Resolvido                                         |
 | Persistência distinta: volátil vs histórica        | Misturar itens efêmeros com histórico degrada consistência | Dois Redis: cache (LRU) e storage (durável)             | Resolvido                                         |
-|                                                    |
 
 ## Soluções Aplicadas
 
@@ -34,6 +33,12 @@ Extrair campos estruturados (ex.: nome, CPF, data de validade, categoria, endere
 - Detecção assíncrona de labels (fire-and-forget) preparando terreno para limpeza ainda mais precisa em futuras requisições.
 - Stream SSE para batch jobs: progressivo, item-complete, resumo final.
 - Versionamento automático de schemas para rastreabilidade de evolução e comparação de acurácia.
+
+## Não solucionado
+
+- Não consegui solucionar um problema em que quando procurava datas ou valores com o regex ele não pegava o referente ao campo mas o primeiro ao qual encontrava. Pensei em utilizar um sistema de embeddings para fazer proximidade da palavra chave com a data mas não deu eficaz.
+- Algumas vezes na alucinação a LLM acaba direcionando valores para campos errados.
+- Não consegui reduzir o máximo de número de tokens possíveis para a LLM, gostaria de fazer uma sugestão de chave-valor com embedding e zero-shot mas ficou com uma má acurácia.
 
 ## Arquitetura
 
@@ -62,7 +67,6 @@ Dois Redis distintos:
 ## Como Usar (Quick Start)
 
 OBS: Pode demorar subir pois há alguns modelos de NLP que são instalados durante o processo
-
 
 ### 1. Pré-requisitos
 
@@ -146,41 +150,21 @@ Content-Type: application/json
 2. Abrir stream: `GET /api/extractor/batch/{jobId}/stream`.
 3. Eventos: `progress`, `item-complete`, `complete`.
 
+### 9. Usando a Plataforma Web
+
+1. Acesse o http://localhost:3000/ e pela sidebar vá para Documentos e clique no botão preto que fica ao lado superior direito com a descrição Upload.
+2. Na tela que abrir você poderá dar upload do pdf, esquema do json de extração, label do pdf, esquema do json de validação para avaliar resultado (opcional)
+3. você poderá adicionar quantos pdfs quiser.
+4. Ao final clique em extrair e você verá uma tela que dará os feedbacks de cada extração.
+5. Na tela padrões de PDF você poderá ver alguns insights referentes aos esquemas de JSON de acordo com cada label de documento
+
 ## Estratégia de Qualidade
 
 - Reutilização de valores evita divergência entre execuções.
 - Hash garante idempotência.
 - Próximo passo: testes unitários de classificadores e módulo de merge.
 
-## Segurança & Resiliência (Atual / Planejado)
-
-- CORS configurado.
-- Dois níveis de armazenamento Redis separados (menor risco de poluição de dados).
-- Planejado: Rate limiting, retry com jitter para lote, circuit breaker em chamadas externas (Python/LLM), validação de schema via FluentValidation.
-
-## 🔭 Roadmap Resumido
-
-Curto prazo:
-
-- Integrar texto limpo via label detection no fluxo principal.
-- Métricas (Prometheus + OpenTelemetry).
-- Validação de schema.
-- Retry em lote.
-
-Médio prazo:
-
-- Rate limiting.
-- Health check profundo Python (modelo carregado, Redis acessível, tempo de embedding).
-- Otimização semântica de remoção de keywords (stop words + padrões).
-
-Longo prazo:
-
-- Seleção adaptativa de modelos GPT.
-- Dashboard Grafana + alertas.
-- Circuit breaker.
-- Escalar FastAPI (Gunicorn + workers / async pool).
-
-## Decisões de Design (Resumo Explicativo)
+## Decisões de Design
 
 - “Progressive Intelligence”: cada camada só acontece se a anterior falhar → evita desperdício.
 - Separação cache vs storage: performance vs consistência histórica.
