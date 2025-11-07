@@ -21,7 +21,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN npm run dev
 
 # ============================================================================
 # STAGE 3: Runner
