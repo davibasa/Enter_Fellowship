@@ -260,9 +260,6 @@ temp/
 *.tmp
 *.temp
 
-# Cache
-.cache/
-cache/
 
 # Configuration files with secrets
 appsettings.Production.json
