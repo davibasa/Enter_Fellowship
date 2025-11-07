@@ -112,6 +112,7 @@ services:
     environment:
       - REDIS_CACHE_URL=redis://redis-cache:6379/0
       - REDIS_STORAGE_URL=redis://redis-storage:6379/0
+      - OPENAI_API_KEY=API_KEY
     depends_on:
       redis-cache:
         condition: service_healthy
