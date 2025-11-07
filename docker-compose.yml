@@ -127,6 +127,30 @@ services:
       timeout: 10s
       retries: 3
 
+  # ============================================================================
+  # FRONTEND (Next.js)
+  # ============================================================================
+  extract-web:
+    build:
+      context: ./Enter_Extract_Web
+      dockerfile: Dockerfile
+    container_name: enter_extract_web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - extractor-api
+    networks:
+      - enter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   enter_network:
     driver: bridge
