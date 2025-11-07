@@ -22,8 +22,7 @@ Extrair campos estruturados (ex.: nome, CPF, data de validade, categoria, endere
 | Reduzir custo GPT                                  | LLM devolvendo dados já óbvios                             | Pipeline progressivo (Cache → Regex → Embeddings → GPT) | Resolvido                                         |
 | Escala em lote com feedback                        | Processar centenas de PDFs sem bloquear UI                 | SSE streaming + job state interno                       | Resolvido                                         |
 | Persistência distinta: volátil vs histórica        | Misturar itens efêmeros com histórico degrada consistência | Dois Redis: cache (LRU) e storage (durável)             | Resolvido                                         |
-| Observabilidade fina                               | Métricas para latência, hits e custo                       | Planejado (OpenTelemetry + Prometheus)                  | Em andamento                                      |
-| Resiliência a falhas em lote                       | Erros intermitentes de IO/rede                             | Retry + circuit breaker                                 | Planejado                                         |
+|                                                    |
 
 ## Soluções Aplicadas
 
