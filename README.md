@@ -61,6 +61,9 @@ Dois Redis distintos:
 
 ## Como Usar (Quick Start)
 
+OBS: Pode demorar subir pois há alguns modelos de NLP que são instalados durante o processo
+
+
 ### 1. Pré-requisitos
 
 - Docker
