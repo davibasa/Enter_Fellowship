@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utills";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -25,40 +25,20 @@ import { usePathname } from "next/navigation";
 
 const menuItems = [
   {
-    title: "Home",
-    icon: Home,
-    href: "/",
-  },
-  {
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
   },
   {
-    title: "Analytics",
-    icon: BarChart3,
-    href: "/analytics",
-  },
-  {
-    title: "Documents",
+    title: "Documentos",
     icon: FileText,
     href: "/documents",
   },
   {
-    title: "Padrões",
+    title: "Padrões dos PDFs",
     icon: Database,
     href: "/schema-patterns",
-  },
-  {
-    title: "Users",
-    icon: Users,
-    href: "/users",
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    href: "/settings",
-  },
+  }
 ];
 
 export function Sidebar() {

@@ -18,26 +18,17 @@ public class TraceMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Gera ou recupera trace_id
         var traceId = context.Request.Headers[TraceIdHeader].FirstOrDefault()
                       ?? Guid.NewGuid().ToString("N")[..16];
 
         var requestId = context.Request.Headers[RequestIdHeader].FirstOrDefault()
                         ?? Guid.NewGuid().ToString("N")[..12];
 
-        // Adiciona aos headers de resposta
         context.Response.Headers[TraceIdHeader] = traceId;
         context.Response.Headers[RequestIdHeader] = requestId;
 
-        // Adiciona ao HttpContext para uso posterior
         context.Items["TraceId"] = traceId;
         context.Items["RequestId"] = requestId;
-
-        // Log início da requisição
-        _logger.LogInformation(
-            "🚀 [TraceId: {TraceId}] [RequestId: {RequestId}] {Method} {Path}",
-            traceId, requestId, context.Request.Method, context.Request.Path
-        );
 
         var startTime = DateTime.UtcNow;
 
@@ -48,10 +39,6 @@ public class TraceMiddleware
         finally
         {
             var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
-            _logger.LogInformation(
-                "✅ [TraceId: {TraceId}] [RequestId: {RequestId}] {StatusCode} - {Duration}ms",
-                traceId, requestId, context.Response.StatusCode, duration
-            );
         }
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,368 +26,30 @@ import {
   Layers,
   AlertTriangle,
   Link2,
+  Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-// Dados mockados - Múltiplas versões de schema por label
-const schemaPatterns = [
-  {
-    id: 1,
-    label: "Carteira OAB",
-    category: "Documentos Profissionais",
-    totalExtractions: 156,
-    successRate: 98.5,
-    avgProcessingTime: "3.2s",
-    lastUsed: "2025-11-06",
-    versions: [
-      {
-        id: "v1",
-        name: "Schema Completo",
-        description: "Versão padrão com todos os campos disponíveis",
-        usageCount: 120,
-        successRate: 98.5,
-        createdAt: "2025-09-15",
-        isDefault: true,
-        fields: 7,
-      },
-      {
-        id: "v2",
-        name: "Schema Básico",
-        description: "Apenas dados essenciais de identificação",
-        usageCount: 36,
-        successRate: 99.2,
-        createdAt: "2025-10-01",
-        isDefault: false,
-        fields: 4,
-      },
-    ],
-    currentSchema: {
-      nome: "Nome do profissional, normalmente no canto superior esquerdo",
-      inscricao: "Número de inscrição do profissional",
-      seccional: "Seccional do profissional (sigla do estado)",
-      subsecao: "Subseção à qual o profissional faz parte",
-      categoria: "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
-      situacao: "Situação do profissional, normalmente no canto inferior direito",
-      telefone_profissional: "Telefone do profissional",
-    },
-    patterns: {
-      inscricao: {
-        type: "Regex",
-        pattern: "\\d{6}",
-        successRate: 100,
-        avgConfidence: 98,
-        examples: ["101943", "234567", "345678"],
-        position: "Linha 2, após 'Inscrição'",
-        extractionMethod: "Fase 1 - Regex",
-      },
-      seccional: {
-        type: "Enum",
-        values: ["PR", "SP", "RJ", "MG", "RS", "SC", "BA", "CE", "PE"],
-        successRate: 100,
-        avgConfidence: 100,
-        examples: ["PR", "SP", "RJ"],
-        position: "Mesma linha da inscrição, coluna 2",
-        extractionMethod: "Fase 1 - Enum",
-      },
-      nome: {
-        type: "Proximity",
-        strategy: "First line before 'Inscrição'",
-        successRate: 95,
-        avgConfidence: 92,
-        examples: ["JOANA D'ARC", "MARIA SILVA", "JOÃO SANTOS"],
-        position: "Primeira linha do documento",
-        extractionMethod: "Fase 2 - Proximidade",
-      },
-    },
-    commonIssues: [
-      {
-        field: "telefone_profissional",
-        severity: "warning",
-        issue: "Campo frequentemente vazio",
-        frequency: "40% dos casos",
-        suggestion: "Considerar campo opcional ou remover do schema básico",
-        impact: "Baixo - não afeta extração de outros campos",
-      },
-      {
-        field: "subsecao",
-        severity: "info",
-        issue: "Nomes longos podem ser truncados",
-        frequency: "15% dos casos",
-        suggestion: "Usar campo MultiLine ou aumentar limite de caracteres",
-        impact: "Médio - pode perder informação completa",
-      },
-    ],
-    relatedLabels: ["Carteira OAB Digital", "Carteirinha OAB Estudante", "Comprovante OAB"],
-  },
-  {
-    id: 2,
-    label: "Extrato Bancário",
-    category: "Documentos Financeiros",
-    totalExtractions: 89,
-    successRate: 92.3,
-    avgProcessingTime: "4.1s",
-    lastUsed: "2025-11-05",
-    versions: [
-      {
-        id: "v1",
-        name: "Schema Detalhado",
-        description: "Inclui todos os campos e detalhes de saldo",
-        usageCount: 67,
-        successRate: 92.3,
-        createdAt: "2025-08-20",
-        isDefault: true,
-        fields: 6,
-      },
-      {
-        id: "v2",
-        name: "Schema Resumido",
-        description: "Apenas datas e total",
-        usageCount: 22,
-        successRate: 95.1,
-        createdAt: "2025-09-10",
-        isDefault: false,
-        fields: 2,
-      },
-    ],
-    currentSchema: {
-      data_base: "Data base da operação selecionada",
-      data_vencimento: "Data de vencimento da operação selecionada",
-      sistema: "Sistema da operação selecionada",
-      saldo_vencido: "Saldo vencido da operação",
-      saldo_a_vencer: "Saldo a vencer",
-      total_geral: "Total geral",
-    },
-    patterns: {
-      data_base: {
-        type: "Regex",
-        pattern: "\\d{2}/\\d{2}/\\d{4}",
-        successRate: 98,
-        avgConfidence: 97,
-        examples: ["05/09/2025", "12/10/2025"],
-        position: "Após 'Data Referência:'",
-        extractionMethod: "Fase 1 - Regex",
-      },
-      sistema: {
-        type: "Enum",
-        values: ["CONSIGNADO", "CRÉDITO DIRETO", "EMPRÉSTIMO", "FINANCIAMENTO"],
-        successRate: 94,
-        avgConfidence: 92,
-        examples: ["CONSIGNADO", "CRÉDITO DIRETO"],
-        position: "Coluna 'Sistema' em estrutura tabular",
-        extractionMethod: "Fase 2 - Tabular",
-      },
-      total_geral: {
-        type: "Currency",
-        pattern: "\\d{1,3}(?:\\.\\d{3})*,\\d{2}",
-        successRate: 93,
-        avgConfidence: 90,
-        examples: ["76.871,20", "45.632,10"],
-        position: "Última coluna da tabela",
-        extractionMethod: "Fase 2 - Tabular",
-      },
-    },
-    commonIssues: [
-      {
-        field: "saldo_vencido",
-        severity: "warning",
-        issue: "Confusão com outros valores monetários",
-        frequency: "12% dos casos",
-        suggestion: "Usar contexto da coluna 'Saldo Vencido' para maior precisão",
-        impact: "Alto - pode extrair valor incorreto",
-      },
-      {
-        field: "sistema",
-        severity: "info",
-        issue: "Variações de nomenclatura entre bancos",
-        frequency: "8% dos casos",
-        suggestion: "Adicionar mais variações ao enum (CREDITO, EMPRESTIMO, etc)",
-        impact: "Médio - fallback para GPT aumenta custo",
-      },
-    ],
-    relatedLabels: ["Extrato Consolidado", "Extrato por Período", "Boleto Bancário"],
-  },
-  {
-    id: 3,
-    label: "Nota Fiscal",
-    category: "Documentos Fiscais",
-    totalExtractions: 234,
-    successRate: 89.5,
-    avgProcessingTime: "5.3s",
-    lastUsed: "2025-11-06",
-    versions: [
-      {
-        id: "v1",
-        name: "Schema NFe Completo",
-        description: "Todos os campos principais da NF-e",
-        usageCount: 180,
-        successRate: 89.5,
-        createdAt: "2025-07-10",
-        isDefault: true,
-        fields: 7,
-      },
-      {
-        id: "v2",
-        name: "Schema Fiscal Simplificado",
-        description: "Apenas identificação e valores",
-        usageCount: 54,
-        successRate: 93.2,
-        createdAt: "2025-08-22",
-        isDefault: false,
-        fields: 4,
-      },
-    ],
-    currentSchema: {
-      numero_nf: "Número da nota fiscal",
-      emitente: "Nome do emitente",
-      cnpj_emitente: "CNPJ do emitente",
-      destinatario: "Nome do destinatário",
-      valor_total: "Valor total da nota fiscal",
-      data_emissao: "Data de emissão",
-      chave_acesso: "Chave de acesso da NFe",
-    },
-    patterns: {
-      cnpj_emitente: {
-        type: "Regex",
-        pattern: "\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}",
-        successRate: 98,
-        avgConfidence: 99,
-        examples: ["12.345.678/0001-90", "98.765.432/0001-12"],
-        position: "Seção 'Emitente', após nome",
-        extractionMethod: "Fase 1 - Regex",
-      },
-      chave_acesso: {
-        type: "Regex",
-        pattern: "\\d{44}",
-        successRate: 88,
-        avgConfidence: 85,
-        examples: ["12345678901234567890123456789012345678901234"],
-        position: "Código de barras ou seção 'Chave de Acesso'",
-        extractionMethod: "Fase 1 - Regex",
-      },
-    },
-    commonIssues: [
-      {
-        field: "emitente",
-        severity: "error",
-        issue: "Nomes de empresa complexos requerem GPT",
-        frequency: "35% dos casos",
-        suggestion: "Tentar extrair via proximidade do CNPJ antes do GPT",
-        impact: "Alto - aumenta custo e tempo de processamento",
-      },
-      {
-        field: "chave_acesso",
-        severity: "warning",
-        issue: "Chave pode estar em formato de código de barras",
-        frequency: "20% dos casos",
-        suggestion: "Aplicar OCR especializado em códigos de barras",
-        impact: "Médio - pode não detectar chave",
-      },
-      {
-        field: "valor_total",
-        severity: "info",
-        issue: "Múltiplos valores no documento causam ambiguidade",
-        frequency: "10% dos casos",
-        suggestion: "Buscar especificamente por 'Valor Total da NF-e'",
-        impact: "Alto - valor incorreto invalida documento",
-      },
-    ],
-    relatedLabels: ["NFe Eletrônica", "Nota Fiscal de Serviço", "Cupom Fiscal"],
-  },
-  {
-    id: 4,
-    label: "RG",
-    category: "Documentos Pessoais",
-    totalExtractions: 67,
-    successRate: 85.7,
-    avgProcessingTime: "4.8s",
-    lastUsed: "2025-11-04",
-    versions: [
-      {
-        id: "v1",
-        name: "Schema Completo",
-        description: "Todos os dados do RG incluindo filiação",
-        usageCount: 45,
-        successRate: 85.7,
-        createdAt: "2025-06-15",
-        isDefault: true,
-        fields: 7,
-      },
-      {
-        id: "v2",
-        name: "Schema Identificação",
-        description: "Apenas dados de identificação básicos",
-        usageCount: 22,
-        successRate: 92.8,
-        createdAt: "2025-07-20",
-        isDefault: false,
-        fields: 4,
-      },
-    ],
-    currentSchema: {
-      nome: "Nome completo",
-      rg: "Número do RG",
-      cpf: "CPF",
-      data_nascimento: "Data de nascimento",
-      naturalidade: "Naturalidade",
-      nome_pai: "Nome do pai",
-      nome_mae: "Nome da mãe",
-    },
-    patterns: {
-      cpf: {
-        type: "Regex",
-        pattern: "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}",
-        successRate: 98,
-        avgConfidence: 99,
-        examples: ["123.456.789-00", "987.654.321-11"],
-        position: "Campo 'CPF'",
-        extractionMethod: "Fase 1 - Regex",
-      },
-      rg: {
-        type: "Regex",
-        pattern: "\\d{1,2}\\.?\\d{3}\\.?\\d{3}-?[0-9Xx]",
-        successRate: 94,
-        avgConfidence: 92,
-        examples: ["12.345.678-9", "1234567X"],
-        position: "Campo 'RG' ou 'Registro Geral'",
-        extractionMethod: "Fase 1 - Regex",
-      },
-    },
-    commonIssues: [
-      {
-        field: "nome_pai",
-        severity: "error",
-        issue: "Layout varia muito entre estados",
-        frequency: "65% dos casos",
-        suggestion: "Criar schemas específicos por estado (SSP-SP, SSP-RJ, etc)",
-        impact: "Alto - frequentemente requer GPT",
-      },
-      {
-        field: "nome_mae",
-        severity: "error",
-        issue: "Layout varia muito entre estados",
-        frequency: "65% dos casos",
-        suggestion: "Criar schemas específicos por estado",
-        impact: "Alto - frequentemente requer GPT",
-      },
-      {
-        field: "naturalidade",
-        severity: "warning",
-        issue: "Formato inconsistente (Cidade-UF vs apenas Cidade)",
-        frequency: "30% dos casos",
-        suggestion: "Normalizar formato após extração",
-        impact: "Baixo - dado é extraído mas formato varia",
-      },
-    ],
-    relatedLabels: ["CNH", "Carteira de Identidade", "Documento de Identificação"],
-  },
-];
+import { useExtractionHistory } from "@/hooks/use-extraction-history";
+import { useSchemaPatterns } from "@/hooks/use-schema-patterns";
 
 export default function SchemaPatternsPage() {
   const router = useRouter();
-  const [selectedPattern, setSelectedPattern] = useState(schemaPatterns[0]);
-  const [selectedVersion, setSelectedVersion] = useState(schemaPatterns[0].versions[0]);
+  const { documents, isLoading, error } = useExtractionHistory("default-user");
+  const { patterns: schemaPatterns, isAnalyzing } = useSchemaPatterns(documents);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedField, setExpandedField] = useState(null);
+  const [selectedPatternId, setSelectedPatternId] = useState(null);
+  const [selectedVersionId, setSelectedVersionId] = useState(null);
+
+  // Derivar padrão e versão selecionados
+  const selectedPattern = selectedPatternId 
+    ? schemaPatterns.find(p => p.id === selectedPatternId)
+    : schemaPatterns[0];
+    
+  const selectedVersion = selectedPattern && selectedVersionId
+    ? selectedPattern.versions.find(v => v.id === selectedVersionId)
+    : selectedPattern?.versions?.[0];
 
   const filteredPatterns = schemaPatterns.filter(
     (pattern) =>
@@ -396,16 +58,88 @@ export default function SchemaPatternsPage() {
   );
 
   const handlePatternSelect = (pattern) => {
-    setSelectedPattern(pattern);
-    setSelectedVersion(pattern.versions.find((v) => v.isDefault) || pattern.versions[0]);
+    setSelectedPatternId(pattern.id);
+    const defaultVersion = pattern.versions.find((v) => v.isDefault) || pattern.versions[0];
+    setSelectedVersionId(defaultVersion?.id);
   };
+
+  // Estados de carregamento e erro
+  if (isLoading || isAnalyzing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">
+            {isAnalyzing ? "Analisando padrões..." : "Carregando dados..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
+          <h2 className="text-xl font-semibold">Erro ao carregar padrões</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()}>Tentar Novamente</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (schemaPatterns.length === 0) {
+    return (
+      <div className="min-h-screen space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+              className="h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Padrões de Schemas</h1>
+              <p className="text-sm text-muted-foreground">
+                Explore padrões aprendidos e versões de schema por tipo de documento
+              </p>
+            </div>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6 text-center space-y-4">
+            <Database className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold mb-2">Nenhum padrão disponível</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Comece fazendo extrações de documentos para o sistema aprender padrões.
+              </p>
+              <Button onClick={() => router.push("/upload")}>
+                Fazer Upload de Documentos
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Dados mockados removidos - agora usamos dados reais
 
   const getTypeColor = (type) => {
     const colors = {
       Regex: "text-blue-600 bg-blue-50 border-blue-200",
+      Date: "text-blue-600 bg-blue-50 border-blue-200",
       Enum: "text-green-600 bg-green-50 border-green-200",
       Proximity: "text-purple-600 bg-purple-50 border-purple-200",
       Currency: "text-yellow-600 bg-yellow-50 border-yellow-200",
+      Percentage: "text-orange-600 bg-orange-50 border-orange-200",
+      Text: "text-gray-600 bg-gray-50 border-gray-200",
     };
     return colors[type] || "text-gray-600 bg-gray-50 border-gray-200";
   };
@@ -599,7 +333,7 @@ export default function SchemaPatternsPage() {
                     {selectedPattern.versions.map((version) => (
                       <div
                         key={version.id}
-                        onClick={() => setSelectedVersion(version)}
+                        onClick={() => setSelectedVersionId(version.id)}
                         className={`p-4 rounded-lg border cursor-pointer transition-all ${
                           selectedVersion?.id === version.id
                             ? "border-primary bg-primary/5"

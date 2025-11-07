@@ -1,35 +1,141 @@
 """
-Embedding Matcher using sentence-transformers
+Embedding Matcher using sentence-transformers with Redis cache
 """
 import logging
 from typing import Dict, Any, List, Tuple
 import torch
+import numpy as np
+
+from cache.embedding_cache import EmbeddingCache
 
 logger = logging.getLogger(__name__)
 
 # Modelo de embeddings (será carregado na inicialização)
 model = None
+embedding_cache = None
 
 
 def initialize_embeddings():
-    """Inicializa modelo de embeddings"""
-    global model
+    """Inicializa modelo de embeddings e cache"""
+    global model, embedding_cache
     try:
         from sentence_transformers import SentenceTransformer
         
         # Modelo multilíngue leve e rápido
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        logger.info("✅ Modelo sentence-transformers 'all-MiniLM-L6-v2' carregado")
+        model_name = "all-MiniLM-L6-v2"
+        model = SentenceTransformer(model_name)
+        
+        # Inicializar cache
+        embedding_cache = EmbeddingCache(model_name=model_name)
+        
+        logger.info(f"✅ Modelo sentence-transformers '{model_name}' carregado")
+        logger.info(f"✅ Cache de embeddings inicializado: {embedding_cache.get_stats()}")
         return True
         
     except ImportError:
         logger.error("❌ sentence-transformers não instalado. Execute: pip install sentence-transformers")
         model = None
+        embedding_cache = None
         return False
     except Exception as e:
         logger.error(f"❌ Erro ao carregar modelo de embeddings: {e}")
         model = None
+        embedding_cache = None
         return False
+
+
+def get_embedding_with_cache(text: str) -> torch.Tensor:
+    """
+    Obtém embedding com cache Redis
+    
+    Args:
+        text: Texto para gerar embedding
+        
+    Returns:
+        Tensor com embedding
+    """
+    global model, embedding_cache
+    
+    if model is None:
+        raise RuntimeError("Model not initialized")
+    
+    # Tentar obter do cache
+    if embedding_cache:
+        cached = embedding_cache.get(text)
+        if cached is not None:
+            # Cache HIT - converter para tensor
+            return torch.tensor(cached)
+    
+    # Cache MISS - calcular embedding
+    embedding = model.encode(text, convert_to_tensor=True)
+    
+    # Salvar no cache (fire-and-forget)
+    if embedding_cache:
+        try:
+            embedding_np = embedding.cpu().numpy() if torch.is_tensor(embedding) else embedding
+            embedding_cache.set(text, embedding_np)
+        except Exception as e:
+            logger.debug(f"Failed to cache embedding (non-critical): {e}")
+    
+    return embedding
+
+
+def get_embeddings_batch_with_cache(texts: List[str]) -> torch.Tensor:
+    """
+    Obtém embeddings em lote com cache Redis
+    
+    Args:
+        texts: Lista de textos
+        
+    Returns:
+        Tensor com embeddings
+    """
+    global model, embedding_cache
+    
+    if model is None:
+        raise RuntimeError("Model not initialized")
+    
+    embeddings = []
+    texts_to_compute = []
+    indices_to_compute = []
+    
+    # Tentar obter do cache
+    if embedding_cache:
+        cached_embeddings = embedding_cache.get_batch(texts)
+        
+        for i, (text, cached) in enumerate(zip(texts, cached_embeddings)):
+            if cached is not None:
+                # Cache HIT
+                embeddings.append(torch.tensor(cached))
+            else:
+                # Cache MISS - guardar para calcular depois
+                embeddings.append(None)
+                texts_to_compute.append(text)
+                indices_to_compute.append(i)
+    else:
+        # Sem cache - calcular todos
+        texts_to_compute = texts
+        indices_to_compute = list(range(len(texts)))
+        embeddings = [None] * len(texts)
+    
+    # Calcular embeddings que faltam
+    if texts_to_compute:
+        computed = model.encode(texts_to_compute, convert_to_tensor=True)
+        
+        # Salvar no cache (fire-and-forget)
+        if embedding_cache:
+            try:
+                computed_np = [emb.cpu().numpy() for emb in computed]
+                embedding_cache.set_batch(texts_to_compute, computed_np)
+            except Exception as e:
+                logger.debug(f"Failed to cache embeddings batch (non-critical): {e}")
+        
+        # Inserir embeddings calculados nas posições corretas
+        for idx, emb in zip(indices_to_compute, computed):
+            embeddings[idx] = emb
+    
+    # Converter lista para tensor
+    return torch.stack(embeddings)
 
 
 def match_fields_with_embeddings(
@@ -71,9 +177,9 @@ def match_fields_with_embeddings(
         logger.info(f"📋 Matching SEQUENCIAL de {len(schema)} campos em {len(all_lines)} linhas")
         logger.info(f"🔄 Ordem dos campos: {list(schema.keys())}")
         
-        # Gerar embeddings de TODAS as linhas uma vez só
+        # Gerar embeddings de TODAS as linhas uma vez só (COM CACHE)
         logger.debug(f"🔢 Gerando embeddings para {len(all_lines)} linhas...")
-        emb_all_lines = model.encode(all_lines, convert_to_tensor=True)
+        emb_all_lines = get_embeddings_batch_with_cache(all_lines)
         
         result = {}
         confidences = []
@@ -109,8 +215,8 @@ def match_fields_with_embeddings(
             
             logger.debug(f"  🔎 Buscando em {len(available_lines)} linhas disponíveis")
             
-            # Gerar embedding do campo
-            emb_field = model.encode(field_description, convert_to_tensor=True)
+            # Gerar embedding do campo (COM CACHE)
+            emb_field = get_embedding_with_cache(field_description)
             scores = util.cos_sim(emb_field, emb_available_lines)[0]
             
             # Pegar MELHOR match (PRIMEIRO na ordem que tem maior similaridade)
@@ -234,8 +340,8 @@ def find_similar_lines(
     try:
         from sentence_transformers import util
         
-        query_emb = model.encode(query, convert_to_tensor=True)
-        lines_emb = model.encode(lines, convert_to_tensor=True)
+        query_emb = get_embedding_with_cache(query)
+        lines_emb = get_embeddings_batch_with_cache(lines)
         
         scores = util.cos_sim(query_emb, lines_emb)[0]
         

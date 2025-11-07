@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utills";
 
 export function StatsCard({ title, value, icon: Icon, trend, description, className }) {
   const isPositive = trend && trend > 0;

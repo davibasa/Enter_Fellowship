@@ -28,11 +28,11 @@ public class ZeroShotClassifierClient : IZeroShotClassifier
     {
         _httpClient = httpClient;
         _logger = logger;
-        _baseUrl = config["ZeroShot:PythonApiUrl"] ?? "http://localhost:5000";
-        
+        _baseUrl = config["ZeroShot:PythonApiUrl"] ?? "http://localhost:5056";
+
         _httpClient.BaseAddress = new Uri(_baseUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
-        
+
         _logger.LogInformation("ZeroShotClassifierClient configurado para: {BaseUrl}", _baseUrl);
     }
 

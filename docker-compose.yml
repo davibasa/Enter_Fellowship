@@ -1,14 +1,22 @@
 version: '3.8'
 
 services:
-  redis:
+  # ============================================================================
+  # REDIS CACHE (Volatile, LRU Eviction)
+  # ============================================================================
+  redis-cache:
     image: redis:7-alpine
-    container_name: enter_redis
+    container_name: enter_redis_cache
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - redis_cache_data:/data
+    command: >
+      redis-server
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -16,7 +24,56 @@ services:
       retries: 3
     networks:
       - enter_network
+    restart: unless-stopped
 
+  # ============================================================================
+  # REDIS STORAGE (Persistent, No Eviction, RDB+AOF)
+  # ============================================================================
+  redis-storage:
+    image: redis:7-alpine
+    container_name: enter_redis_storage
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_storage_data:/data
+    command: >
+      redis-server
+      --maxmemory-policy noeviction
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - enter_network
+    restart: unless-stopped
+
+  # ============================================================================
+  # REDIS COMMANDER (Web UI for Redis Management)
+  # ============================================================================
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: enter_redis_commander
+    ports:
+      - "8082:8081"
+    environment:
+      - REDIS_HOSTS=cache:redis-cache:6379:0,storage:redis-storage:6379:0
+    depends_on:
+      redis-cache:
+        condition: service_healthy
+      redis-storage:
+        condition: service_healthy
+    networks:
+      - enter_network
+    restart: unless-stopped
+
+  # ============================================================================
+  # BACKEND C# (.NET 9)
+  # ============================================================================
   extractor-api:
     build:
       context: ./Enter_Extractor_Api
@@ -28,10 +85,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - Redis__ConnectionString=redis:6379
+      - Redis__Cache__ConnectionString=redis-cache:6379
+      - Redis__Storage__ConnectionString=redis-storage:6379
       - PythonApi__BaseUrl=http://pdf-extractor:5000
     depends_on:
-      redis:
+      redis-cache:
+        condition: service_healthy
+      redis-storage:
         condition: service_healthy
       pdf-extractor:
         condition: service_healthy
@@ -39,6 +99,9 @@ services:
       - enter_network
     restart: unless-stopped
 
+  # ============================================================================
+  # BACKEND PYTHON (FastAPI)
+  # ============================================================================
   pdf-extractor:
     build:
       context: ./Enter_Extract_Text_Pdf
@@ -47,10 +110,12 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_CACHE_URL=redis://redis-cache:6379/0
+      - REDIS_STORAGE_URL=redis://redis-storage:6379/0
     depends_on:
-      redis:
+      redis-cache:
+        condition: service_healthy
+      redis-storage:
         condition: service_healthy
     networks:
       - enter_network
@@ -61,10 +126,12 @@ services:
       timeout: 10s
       retries: 3
 
-volumes:
-  redis_data:
-    driver: local
-
 networks:
   enter_network:
     driver: bridge
+
+volumes:
+  redis_cache_data:
+    driver: local
+  redis_storage_data:
+    driver: local

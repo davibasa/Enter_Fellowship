@@ -118,9 +118,6 @@ namespace Enter_Extractor_Api.Models.SmartExtraction
         public string PatternType { get; set; } = string.Empty;
     }
 
-    // ============================================================================
-    // MODELOS ESTENDIDOS PARA SMART EXTRACTION COM CACHE, NER, EMBEDDINGS E GPT
-    // ============================================================================
 
     /// <summary>
     /// Request estendido para Smart Extraction com threshold configurável
@@ -219,14 +216,6 @@ namespace Enter_Extractor_Api.Models.SmartExtraction
         [JsonPropertyName("uptime_seconds")]
         public long UptimeSeconds { get; set; }
     }
-
-    // ============================================================================
-    // MODELOS PARA FASE 2.5 - Smart Extract
-    // ============================================================================
-
-    /// <summary>
-    /// Response da FASE 2.5 - Smart Extract (NER + Embeddings + Cache)
-    /// </summary>
     public class Phase25SmartExtractResponse
     {
         [JsonPropertyName("fields")]

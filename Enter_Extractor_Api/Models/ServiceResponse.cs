@@ -7,5 +7,6 @@
         public string? Message { get; set; } = "";
         public string? Details { get; set; } = "";
         public int? StatusCode { get; set; } = 200;
+        public Dictionary<string, object>? Metadata { get; set; }
     }
 }
