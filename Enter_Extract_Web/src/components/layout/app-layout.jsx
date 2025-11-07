@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utills";
+import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { useSidebar } from "@/hooks/use-sidebar";

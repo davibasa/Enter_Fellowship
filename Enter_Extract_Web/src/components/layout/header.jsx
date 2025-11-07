@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utills";
+import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";

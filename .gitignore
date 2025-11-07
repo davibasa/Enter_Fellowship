@@ -79,15 +79,12 @@ project.fragment.lock.json
 artifacts/
 
 # Swagger/OpenAPI generated files
-Enter_Extractor_Api.json
 **/openapi.json
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
 # User secrets
-appsettings.Development.json
-appsettings.json
 *.Development.json
 secrets.json
 *.onnx
@@ -113,7 +110,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
